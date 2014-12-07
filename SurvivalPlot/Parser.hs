@@ -23,7 +23,7 @@
 
 {-# LANGUAGE OverloadedStrings #-}
 
-module SurvivalPlot.Parser (parseDistributions, Curve (..), TestInfo (..)) where
+module SurvivalPlot.Parser (parseDistributions, parseIntervals, Curve (..), TestInfo (..)) where
 
 import Control.Applicative
 import Data.Attoparsec.Text
@@ -44,6 +44,12 @@ data TestInfo = TestInfo { concordance :: Double
                          }
 
 
+-- | Parse a time intervals file.
+parseIntervals :: Parser [Double]
+parseIntervals = many1 (double <* endOfLine)
+
+
+-- | Parse an MTLR test distribution.
 parseDistributions :: Parser ([Curve], TestInfo)
 parseDistributions = do curves <- parseCurves
                         info <- parseTestInfo
@@ -51,6 +57,7 @@ parseDistributions = do curves <- parseCurves
                         return (curves, info)
 
 
+-- | Parse MTLR test error information.
 parseTestInfo :: Parser TestInfo
 parseTestInfo = do string "#concordance index: "
                    conc <- double
@@ -83,16 +90,19 @@ parseTestInfo = do string "#concordance index: "
                    return (TestInfo conc l1 l2 rae l1Log l2Log logLikelihood)
 
 
+-- | Parse all curves in a file.
 parseCurves :: Parser [Curve]
 parseCurves = many1 parseCurveLine
 
 
+-- | Parse a single curve.
 parseCurveLine :: Parser Curve
 parseCurveLine = do points <- parsePoints
                     t <- parseTValue
                     return (Curve points t)
 
 
+-- | Get all points for a curve.
 parsePoints :: Parser [Double]
 parsePoints = do point <- double
                  otherPoints <- (char ',' *> skipSpace *> parsePoints) <|> return []
@@ -100,6 +110,7 @@ parsePoints = do point <- double
                  return (point:otherPoints)
                  
 
+-- | Parse the weird scary "t" values.
 parseTValue :: Parser (Double,Double)
 parseTValue = do string "t:"
                  t1 <- double <|> (string "OUT_OF_RANGE" *> return 0)
