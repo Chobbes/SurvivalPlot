@@ -23,13 +23,13 @@
 
 {-# LANGUAGE OverloadedStrings #-}
 
-module SurvivalPlot.Parser (parseCurves, Curve (..), TestInfo (..)) where
+module SurvivalPlot.Parser (parseDistributions, Curve (..), TestInfo (..)) where
 
 import Control.Applicative
 import Data.Attoparsec.Text
 
 
-data Curve = Curve { points :: [Double]
+data Curve = Curve { curvePoints :: [Double]
                    , tValue :: (Double,Double)  -- Not really sure what to do for OUT_OF_RANGE
                    }
 
@@ -42,3 +42,68 @@ data TestInfo = TestInfo { concordance :: Double
                          , l2LogLoss :: Double
                          , logLikelihoodLoss :: Double
                          }
+
+
+parseDistributions :: Parser ([Curve], TestInfo)
+parseDistributions = do curves <- parseCurves
+                        info <- parseTestInfo
+                        endOfInput
+                        return (curves, info)
+
+
+parseTestInfo :: Parser TestInfo
+parseTestInfo = do string "#concordance index: "
+                   conc <- double
+                   endOfLine
+                   
+                   string "#avg l1-loss: "
+                   l1 <- double
+                   endOfLine
+                   
+                   string "#avg l2-loss: "
+                   l2 <- double
+                   endOfLine
+                   
+                   string "#avg rae-loss: "
+                   rae <- double
+                   endOfLine
+                   
+                   string "#avg l1-log-loss: "
+                   l1Log <- double
+                   endOfLine
+                   
+                   string "#avg l2-log-loss: "
+                   l2Log <- double
+                   endOfLine
+                   
+                   string "#avg log-likelihood loss: "
+                   logLikelihood <- double
+                   endOfLine
+                   
+                   return (TestInfo conc l1 l2 rae l1Log l2Log logLikelihood)
+
+
+parseCurves :: Parser [Curve]
+parseCurves = many1 parseCurveLine
+
+
+parseCurveLine :: Parser Curve
+parseCurveLine = do points <- parsePoints
+                    t <- parseTValue
+                    return (Curve points t)
+
+
+parsePoints :: Parser [Double]
+parsePoints = do point <- double
+                 otherPoints <- (char ',' *> skipSpace *> parsePoints) <|> return []
+                 skipSpace
+                 return (point:otherPoints)
+                 
+
+parseTValue :: Parser (Double,Double)
+parseTValue = do string "t:"
+                 t1 <- double <|> (string "OUT_OF_RANGE" *> return 0)
+                 char ':'
+                 t2 <- double <|> (string "OUT_OF_RANGE" *> return 0)
+                 endOfLine
+                 return (t1, t2)
