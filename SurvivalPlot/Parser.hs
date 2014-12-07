@@ -23,7 +23,7 @@
 
 {-# LANGUAGE OverloadedStrings #-}
 
-module SurvivalPlot.Parser (parseCurves) where
+module SurvivalPlot.Parser (parseCurves, Curve (..), TestInfo (..)) where
 
 import Control.Applicative
 import Data.Attoparsec.Text
