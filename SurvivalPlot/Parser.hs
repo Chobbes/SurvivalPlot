@@ -32,8 +32,9 @@ import Data.Attoparsec.Text
 data Curve = Curve { curvePoints :: [Double]
                    , tValue :: (Double,Double)  -- Not really sure what to do for OUT_OF_RANGE
                    }
+                   deriving (Show)
 
-  
+
 data TestInfo = TestInfo { concordance :: Double
                          , l1Loss :: Double
                          , l2Loss :: Double
@@ -99,7 +100,7 @@ parseCurves = many1 parseCurveLine
 parseCurveLine :: Parser Curve
 parseCurveLine = do points <- parsePoints
                     t <- parseTValue
-                    return (Curve points t)
+                    return (Curve (drop 2 points) t)
 
 
 -- | Get all points for a curve.
@@ -112,7 +113,7 @@ parsePoints = do point <- double
 
 -- | Parse the weird scary "t" values.
 parseTValue :: Parser (Double,Double)
-parseTValue = do string "t:"
+parseTValue = do string ", t:"
                  t1 <- double <|> (string "OUT_OF_RANGE" *> return 0)
                  char ':'
                  t2 <- double <|> (string "OUT_OF_RANGE" *> return 0)
