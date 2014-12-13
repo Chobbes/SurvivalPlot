@@ -8,7 +8,7 @@ haskellPackages.cabal.mkDerivation (self: {
   src = ./.;
   isLibrary = false;
   isExecutable = true;
-  buildDepends = with haskellPackages; [ Chart ChartCairo attoparsec ];
+  buildDepends = with haskellPackages; [ Chart ChartCairo attoparsec directoryTree ];
   buildTools = with haskellPackages; [ cabalInstall ];
   meta = {
     description = "Plot survival curves.";

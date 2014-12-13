@@ -44,10 +44,17 @@ data TestInfo = TestInfo { concordance :: Double
                          , logLikelihoodLoss :: Double
                          }
 
+-- | MTLR Model data type
+data Model = Model { numTimePoints :: Integer -- ^ Number of time points in the interval.
+                   , timePoints :: [Double] -- ^ Time points in the interval.
+                   , rForSomeReason :: Integer -- ^ I have no idea what is this even?
+                   , dimension :: Integer -- ^ Number of features in the model.
+                   , features :: [(Integer, Double)]  -- ^ Feature, value pairs
+                   }
 
 -- | Parse a time intervals file.
 parseIntervals :: Parser [Double]
-parseIntervals = many1 (double <* endOfLine)
+parseIntervals = (many1 (double <* endOfLine)) <|> (do model <- parseModel; return (timePoints model))
 
 
 -- | Parse an MTLR test distribution.
@@ -57,38 +64,82 @@ parseDistributions = do curves <- parseCurves
                         endOfInput
                         return (curves, info)
 
+-- | Parse PSSP model.
+parseModel :: Parser Model
+parseModel = do string "m:"
+                tps <- decimal
+                endOfLine'
+
+                timeInterval <- parseTimeInterval
+                endOfLine'
+
+                string "r:"
+                r <- decimal
+                endOfLine'
+
+                string "DIM:"
+                dim <- decimal
+                endOfLine'
+
+                feats <-  many parseKeyWeight
+                many endOfLine'
+                endOfInput <?> "End of input not reached. Probably some bad padding at the end, or bad features."
+
+                return (Model tps timeInterval r dim feats)
+
+-- | Parse the comma separated time points for the interval.
+parseTimeInterval :: Parser [Double]
+parseTimeInterval = 
+  do point <- double
+     others <- (do char ',' *> parseTimeInterval) <|> (return [])
+     return (point : others)
+
+-- | Parse a key:double pair for model weights.
+parseKeyWeight :: Parser (Integer, Double)
+parseKeyWeight = do key <- decimal
+                    char ':'
+                    value <- double
+                    endOfLine'
+                    return (key, value)
+
+-- | Newline parser to handle all sorts of horrible.
+endOfLine' :: Parser ()
+endOfLine' = endOfLine <|> (char '\r' *> return ())
 
 -- | Parse MTLR test error information.
 parseTestInfo :: Parser TestInfo
 parseTestInfo = do string "#concordance index: "
-                   conc <- double
+                   conc <- doubleInf
                    endOfLine
                    
                    string "#avg l1-loss: "
-                   l1 <- double
+                   l1 <- doubleInf
                    endOfLine
                    
                    string "#avg l2-loss: "
-                   l2 <- double
+                   l2 <- doubleInf
                    endOfLine
                    
                    string "#avg rae-loss: "
-                   rae <- double
+                   rae <- doubleInf
                    endOfLine
                    
                    string "#avg l1-log-loss: "
-                   l1Log <- double
+                   l1Log <- doubleInf
                    endOfLine
                    
                    string "#avg l2-log-loss: "
-                   l2Log <- double
+                   l2Log <- doubleInf
                    endOfLine
                    
                    string "#avg log-likelihood loss: "
-                   logLikelihood <- double
+                   logLikelihood <- doubleInf
                    endOfLine
                    
                    return (TestInfo conc l1 l2 rae l1Log l2Log logLikelihood)
+
+doubleInf :: Parser Double
+doubleInf = double <|> (string "inf" *> (return 0))
 
 
 -- | Parse all curves in a file.
